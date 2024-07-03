@@ -35,14 +35,11 @@ func OpenDB(dir string) (dbm.DB, error) {
 		return nil, fmt.Errorf("database directory must end with .db")
 	}
 
-	// TODO: doesn't work on windows!
-	cut := strings.LastIndex(dir, "/")
-	if cut == -1 {
-		return nil, fmt.Errorf("cannot cut paths on %s", dir)
-	}
+	directory := filepath.Dir(dir)
+	filename := filepath.Base(dir)
 
-	name := strings.TrimSuffix(dir[cut+1:], ext)
-	db, err := dbm.NewGoLevelDB(name, dir[:cut], nil)
+	name := strings.TrimSuffix(filename, ext)
+	db, err := dbm.NewGoLevelDB(name, directory, nil)
 	if err != nil {
 		return nil, err
 	}
