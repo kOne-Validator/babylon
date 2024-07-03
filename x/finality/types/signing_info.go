@@ -14,3 +14,15 @@ func NewFinalityProviderSigningInfo(
 		MissedBlocksCounter: missedBlocksCounter,
 	}
 }
+
+func (si *FinalityProviderSigningInfo) IncrementMissedBlocksCounter() {
+	si.MissedBlocksCounter++
+}
+
+func (si *FinalityProviderSigningInfo) DecrementMissedBlocksCounter() {
+	si.MissedBlocksCounter--
+}
+
+func (si *FinalityProviderSigningInfo) ResetMissedBlocksCounter() {
+	si.MissedBlocksCounter = 0
+}

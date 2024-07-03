@@ -91,7 +91,7 @@ func (k Keeper) HandleFinalityProviderLiveness(ctx context.Context, fpPk *types.
 		// immediately detected as inactive upon re-bonding.
 		// We don't set the start height as this will get correctly set
 		// once they bond again in the AfterFinalityProviderActivated hook
-		signInfo.MissedBlocksCounter = 0
+		signInfo.ResetMissedBlocksCounter()
 		err = k.DeleteMissedBlockBitmap(ctx, fpPk)
 		if err != nil {
 			return err
@@ -163,7 +163,7 @@ func (k Keeper) updateSigningInfo(
 			return false, nil, err
 		}
 
-		signInfo.MissedBlocksCounter++
+		signInfo.IncrementMissedBlocksCounter()
 		modifiedSignInfo = true
 
 	case previous && !missed:
@@ -173,7 +173,7 @@ func (k Keeper) updateSigningInfo(
 			return false, nil, err
 		}
 
-		signInfo.MissedBlocksCounter--
+		signInfo.DecrementMissedBlocksCounter()
 		modifiedSignInfo = true
 
 	default:
