@@ -163,6 +163,20 @@ func (mr *MockBTCStakingKeeperMockRecorder) RemoveVotingPowerDistCache(ctx, heig
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveVotingPowerDistCache", reflect.TypeOf((*MockBTCStakingKeeper)(nil).RemoveVotingPowerDistCache), ctx, height)
 }
 
+// RevertInactiveFinalityProvider mocks base method.
+func (m *MockBTCStakingKeeper) RevertInactiveFinalityProvider(ctx context.Context, fpBTCPK []byte) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RevertInactiveFinalityProvider", ctx, fpBTCPK)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// RevertInactiveFinalityProvider indicates an expected call of RevertInactiveFinalityProvider.
+func (mr *MockBTCStakingKeeperMockRecorder) RevertInactiveFinalityProvider(ctx, fpBTCPK interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RevertInactiveFinalityProvider", reflect.TypeOf((*MockBTCStakingKeeper)(nil).RevertInactiveFinalityProvider), ctx, fpBTCPK)
+}
+
 // SlashFinalityProvider mocks base method.
 func (m *MockBTCStakingKeeper) SlashFinalityProvider(ctx context.Context, fpBTCPK []byte) error {
 	m.ctrl.T.Helper()
