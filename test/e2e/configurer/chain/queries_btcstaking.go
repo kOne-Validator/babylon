@@ -4,11 +4,12 @@ import (
 	"fmt"
 	"net/url"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/babylonchain/babylon/test/e2e/util"
 	bbn "github.com/babylonchain/babylon/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	ftypes "github.com/babylonchain/babylon/x/finality/types"
-	"github.com/stretchr/testify/require"
 )
 
 func (n *NodeConfig) QueryBTCStakingParams() *bstypes.Params {
@@ -16,6 +17,17 @@ func (n *NodeConfig) QueryBTCStakingParams() *bstypes.Params {
 	require.NoError(n.t, err)
 
 	var resp bstypes.QueryParamsResponse
+	err = util.Cdc.UnmarshalJSON(bz, &resp)
+	require.NoError(n.t, err)
+
+	return &resp.Params
+}
+
+func (n *NodeConfig) QueryFinalityParams() *ftypes.Params {
+	bz, err := n.QueryGRPCGateway("/babylon/finality/v1/params", url.Values{})
+	require.NoError(n.t, err)
+
+	var resp ftypes.QueryParamsResponse
 	err = util.Cdc.UnmarshalJSON(bz, &resp)
 	require.NoError(n.t, err)
 

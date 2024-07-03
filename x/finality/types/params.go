@@ -12,6 +12,7 @@ import (
 const (
 	DefaultSignedBlocksWindow = int64(100)
 	DefaultMinPubRand         = 100
+	DefaultLivenessDelay      = 3
 )
 
 var (
@@ -23,6 +24,7 @@ var _ paramtypes.ParamSet = (*Params)(nil)
 // DefaultParams returns a default set of parameters
 func DefaultParams() Params {
 	return Params{
+		LivenessDelay:      DefaultLivenessDelay,
 		SignedBlocksWindow: DefaultSignedBlocksWindow,
 		MinSignedPerWindow: DefaultMinSignedPerWindow,
 		MinPubRand:         DefaultMinPubRand,
@@ -52,9 +54,15 @@ func (p Params) Validate() error {
 	if err := validateSignedBlocksWindow(p.SignedBlocksWindow); err != nil {
 		return err
 	}
+
+	if err := validateLivenessDelay(p.SignedBlocksWindow); err != nil {
+		return err
+	}
+
 	if err := validateMinSignedPerWindow(p.MinSignedPerWindow); err != nil {
 		return err
 	}
+
 	if err := validateMinPubRand(p.MinPubRand); err != nil {
 		return err
 	}
@@ -70,6 +78,19 @@ func validateSignedBlocksWindow(i interface{}) error {
 
 	if v <= 0 {
 		return fmt.Errorf("signed blocks window must be positive: %d", v)
+	}
+
+	return nil
+}
+
+func validateLivenessDelay(i interface{}) error {
+	v, ok := i.(int64)
+	if !ok {
+		return fmt.Errorf("invalid parameter type: %T", i)
+	}
+
+	if v <= 0 {
+		return fmt.Errorf("finality timeout must be positive: %d", v)
 	}
 
 	return nil

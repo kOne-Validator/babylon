@@ -56,7 +56,7 @@ func FuzzHandleLiveness(f *testing.F) {
 		require.Equal(t, int64(0), signingInfo.MissedBlocksCounter)
 
 		minSignedPerWindow := params.MinSignedPerWindowInt()
-		// for blocks up to the jailing boundary, mark the finality provider as having not signed
+		// for blocks up to the inactivity boundary, mark the finality provider as having not signed
 		missingCount := 0
 		targetHeight := activatedHeight + ((params.SignedBlocksWindow * 2) - minSignedPerWindow)
 		for ; height < activatedHeight+((params.SignedBlocksWindow*2)-minSignedPerWindow+1); height++ {
@@ -68,7 +68,7 @@ func FuzzHandleLiveness(f *testing.F) {
 			if height < targetHeight {
 				require.Equal(t, int64(missingCount), signingInfo.MissedBlocksCounter)
 			} else {
-				// the fp is jailed, so the signingInfo is reset
+				// the fp is detected as inactive, so the signingInfo is reset
 				require.Equal(t, int64(0), signingInfo.MissedBlocksCounter)
 			}
 		}

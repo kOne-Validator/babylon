@@ -12,9 +12,11 @@ message Params {
   option (gogoproto.goproto_stringer) = false;
   // signed_blocks_window defines the size of the sliding window for tracking finality provider liveness
   int64 signed_blocks_window  = 1;
+  // liveness_delay defines the delay for examining inactivity of finality providers
+  int64 liveness_delay = 2;
   // min_signed_per_window defines the minimum number of blocks that a finality provider is required to sign
   // within the sliding window to avoid being detected as inactive
-  bytes min_signed_per_window = 2 [
+  bytes min_signed_per_window = 3 [
     (cosmos_proto.scalar)  = "cosmos.Dec",
     (gogoproto.customtype) = "cosmossdk.io/math.LegacyDec",
     (gogoproto.nullable)   = false,

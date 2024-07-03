@@ -27,10 +27,14 @@ func EndBlocker(ctx context.Context, k keeper.Keeper) ([]abci.ValidatorUpdate, e
 		k.IndexBlock(ctx)
 		// tally all non-finalised blocks
 		k.TallyBlocks(ctx)
-		// jail inactive finality providers if there are any
-		// TODO: decide which height to use the handle liveness
-		height := sdk.UnwrapSDKContext(ctx).HeaderInfo().Height
-		k.HandleLiveness(ctx, height)
+
+		// detect inactive finality providers if there are any
+		// height for examining is determined by the current height - params.LivenessDelay
+		// this is we allow finality signatures to be received after quorum
+		heightToExamine := sdk.UnwrapSDKContext(ctx).HeaderInfo().Height - k.GetParams(ctx).LivenessDelay
+		if heightToExamine >= 1 {
+			k.HandleLiveness(ctx, heightToExamine)
+		}
 	}
 
 	return []abci.ValidatorUpdate{}, nil
