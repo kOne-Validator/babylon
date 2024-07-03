@@ -26,18 +26,13 @@ func OpenDB(dir string) (dbm.DB, error) {
 	fmt.Printf("Opening database at: %s\n", dir)
 	defer fmt.Printf("Opened database at: %s\n", dir)
 
-	switch {
-	case strings.HasSuffix(dir, ".db"):
-		dir = dir[:len(dir)-3]
-	case strings.HasSuffix(dir, ".db/"):
-		dir = dir[:len(dir)-4]
-	default:
-		return nil, fmt.Errorf("database directory must end with .db")
-	}
-
 	dir, err := filepath.Abs(dir)
 	if err != nil {
 		return nil, err
+	}
+	ext := filepath.Ext(dir)
+	if !strings.EqualFold(ext, ".db") {
+		return nil, fmt.Errorf("database directory must end with .db")
 	}
 
 	// TODO: doesn't work on windows!
@@ -45,7 +40,8 @@ func OpenDB(dir string) (dbm.DB, error) {
 	if cut == -1 {
 		return nil, fmt.Errorf("cannot cut paths on %s", dir)
 	}
-	name := dir[cut+1:]
+
+	name := strings.TrimSuffix(dir[cut+1:], ext)
 	db, err := dbm.NewGoLevelDB(name, dir[:cut], nil)
 	if err != nil {
 		return nil, err
@@ -150,7 +146,7 @@ func PrintDBStats(db dbm.DB, printInterval int) {
 
 func ModuleSizeCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "module-sizes",
+		Use:   "module-sizes [path-to-db]",
 		Short: "print sizes of each module in the database",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -171,6 +167,7 @@ func ModuleSizeCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			defer db.Close()
 
 			PrintDBStats(db, d)
 
