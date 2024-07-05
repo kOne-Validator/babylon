@@ -464,7 +464,7 @@ type UnbondingInfo struct {
 
 // BuildUnbondingInfo builds all Babylon specific BTC scripts that must
 // be committed to in the unbonding output.
-// Returned `StakingInfo` object exposes methods to build spend info for each
+// Returned `UnbondingInfo` object exposes methods to build spend info for each
 // of the script spending paths which later must be included in the witness.
 // It is up to the caller to verify whether parameters provided to this function
 // obey parameters expected by Babylon chain.

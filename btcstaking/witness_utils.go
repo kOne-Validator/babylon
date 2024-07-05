@@ -20,8 +20,7 @@ func (si *SpendInfo) CreateTimeLockPathWitness(delegatorSig *schnorr.Signature) 
 // CreateUnbondingPathWitness helper function to create a witness to spend
 // transaction through the unbonding path.
 // It is up to the caller to ensure that the amount of covenantSigs matches the
-// expected quorum of covenenant members or that transaction is has unbonding
-// path.
+// expected quorum of covenenant members and the transaction has unbonding path.
 func (si *SpendInfo) CreateUnbondingPathWitness(
 	covenantSigs []*schnorr.Signature,
 	delegatorSig *schnorr.Signature,
@@ -57,8 +56,8 @@ func (si *SpendInfo) CreateUnbondingPathWitness(
 // CreateSlashingPathWitness helper function to create a witness to spend
 // transaction through the slashing path.
 // It is up to the caller to ensure that the amount of covenantSigs matches the
-// expected quorum of covenenant members or that transaction is has slashing
-// path.
+// expected quorum of covenenant members, the finality provider sigs respect the finality providers
+// that the delegation belongs to, and the transaction has slashing path.
 func (si *SpendInfo) CreateSlashingPathWitness(
 	covenantSigs []*schnorr.Signature,
 	fpSigs []*schnorr.Signature,
