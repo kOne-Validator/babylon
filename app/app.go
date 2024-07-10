@@ -24,6 +24,7 @@ import (
 	"github.com/CosmWasm/wasmd/x/wasm"
 	wasmkeeper "github.com/CosmWasm/wasmd/x/wasm/keeper"
 	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
+	"github.com/babylonchain/babylon/app/upgrades"
 	bbn "github.com/babylonchain/babylon/types"
 	abci "github.com/cometbft/cometbft/abci/types"
 	cmtos "github.com/cometbft/cometbft/libs/os"
@@ -151,6 +152,10 @@ var (
 		ibcfeetypes.ModuleName:         nil,
 		incentivetypes.ModuleName:      nil, // this line is needed to create an account for incentive module
 	}
+
+	// software upgrades and forks
+	Upgrades = []upgrades.Upgrade{}
+	Forks    = []upgrades.Fork{}
 )
 
 func init() {
@@ -259,6 +264,7 @@ func NewBabylonApp(
 		wasmOpts,
 		BlockedAddresses(),
 	)
+	app.setupUpgradeStoreLoaders()
 
 	/****  Module Options ****/
 
@@ -450,6 +456,9 @@ func NewBabylonApp(
 	// add test gRPC service for testing gRPC queries in isolation
 	testdata.RegisterQueryServer(app.GRPCQueryRouter(), testdata.QueryImpl{})
 
+	// set upgrade handler
+	app.setupUpgradeHandlers()
+
 	// create the simulation manager and define the order of the modules for deterministic simulations
 	//
 	// NOTE: this is not required apps that don't use the simulator for fuzz testing
@@ -500,7 +509,6 @@ func NewBabylonApp(
 		NewBtcValidationDecorator(btcConfig, &app.BtcCheckpointKeeper),
 	)
 
-	// initialize BaseApp
 	app.SetInitChainer(app.InitChainer)
 	app.SetBeginBlocker(app.BeginBlocker)
 	app.SetEndBlocker(app.EndBlocker)
@@ -567,8 +575,19 @@ func (app *BabylonApp) PreBlocker(ctx sdk.Context, _ *abci.RequestFinalizeBlock)
 	return app.ModuleManager.PreBlock(ctx)
 }
 
+// BeginBlockForks is intended to be ran in a chain upgrade.
+func (app *BabylonApp) BeginBlockForks(ctx sdk.Context) {
+	for _, fork := range Forks {
+		if ctx.BlockHeight() == fork.UpgradeHeight {
+			fork.BeginForkLogic(ctx, app.AppKeepers)
+			return
+		}
+	}
+}
+
 // BeginBlocker application updates every begin block
 func (app *BabylonApp) BeginBlocker(ctx sdk.Context) (sdk.BeginBlock, error) {
+	app.BeginBlockForks(ctx)
 	return app.ModuleManager.BeginBlock(ctx)
 }
 
@@ -718,6 +737,39 @@ func (app *BabylonApp) AutoCliOpts() autocli.AppOptions {
 		AddressCodec:          authcodec.NewBech32Codec(appparams.Bech32PrefixAccAddr),
 		ValidatorAddressCodec: authcodec.NewBech32Codec(appparams.Bech32PrefixValAddr),
 		ConsensusAddressCodec: authcodec.NewBech32Codec(appparams.Bech32PrefixConsAddr),
+	}
+}
+
+// configure store loader that checks if version == upgradeHeight and applies store upgrades
+func (app *BabylonApp) setupUpgradeStoreLoaders() {
+	upgradeInfo, err := app.UpgradeKeeper.ReadUpgradeInfoFromDisk()
+	if err != nil {
+		panic(fmt.Sprintf("failed to read upgrade info from disk %s", err))
+	}
+
+	if app.UpgradeKeeper.IsSkipHeight(upgradeInfo.Height) {
+		return
+	}
+
+	for _, upgrade := range Upgrades {
+		if upgradeInfo.Name == upgrade.UpgradeName {
+			storeUpgrades := upgrade.StoreUpgrades
+			app.SetStoreLoader(upgradetypes.UpgradeStoreLoader(upgradeInfo.Height, &storeUpgrades))
+		}
+	}
+}
+
+func (app *BabylonApp) setupUpgradeHandlers() {
+	for _, upgrade := range Upgrades {
+		app.UpgradeKeeper.SetUpgradeHandler(
+			upgrade.UpgradeName,
+			upgrade.CreateUpgradeHandler(
+				app.ModuleManager,
+				app.configurator,
+				app.BaseApp,
+				app.AppKeepers,
+			),
+		)
 	}
 }
 
