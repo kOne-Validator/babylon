@@ -3,6 +3,7 @@ package upgrades_test
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"testing"
 	"time"
 
@@ -16,6 +17,7 @@ import (
 	"github.com/babylonchain/babylon/app/upgrades"
 	"github.com/babylonchain/babylon/testutil/datagen"
 	btcstakingkeeper "github.com/babylonchain/babylon/x/btcstaking/keeper"
+	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	tmproto "github.com/cometbft/cometbft/proto/tendermint/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/module"
@@ -51,11 +53,20 @@ func CreateUpgradeHandler(
 func propVanilla(
 	ctx sdk.Context,
 	accountKeeper *authkeeper.AccountKeeper,
-	bskeeper *btcstakingkeeper.Keeper,
+	bsKeeper *btcstakingkeeper.Keeper,
 ) {
-	randomAcct := datagen.GenRandomAccount()
-	acct := accountKeeper.NewAccount(ctx, randomAcct)
-	accountKeeper.SetAccount(ctx, acct)
+	r := rand.New(rand.NewSource(time.Now().Unix()))
+
+	// remove an account
+	allAccounts := accountKeeper.GetAllAccounts(ctx)
+	accountKeeper.RemoveAccount(ctx, allAccounts[len(allAccounts)-1])
+
+	// insert a FP
+	fp, err := datagen.GenRandomFinalityProvider(r)
+	if err != nil {
+		panic(err)
+	}
+	bsKeeper.SetFinalityProvider(ctx, fp)
 }
 
 type UpgradeTestSuite struct {
@@ -77,6 +88,8 @@ func TestKeeperTestSuite(t *testing.T) {
 }
 
 func (s *UpgradeTestSuite) TestUpgradePayments() {
+	oldAcctNum := 0
+
 	testCases := []struct {
 		msg         string
 		pre_update  func()
@@ -87,7 +100,8 @@ func (s *UpgradeTestSuite) TestUpgradePayments() {
 		{
 			"Test vanilla software upgrade gov prop",
 			func() {
-
+				allAccounts := s.app.AccountKeeper.GetAllAccounts(s.ctx)
+				oldAcctNum = len(allAccounts)
 			},
 			func() {
 				// inject upgrade plan
@@ -105,18 +119,26 @@ func (s *UpgradeTestSuite) TestUpgradePayments() {
 
 				// run upgrade
 				err := s.app.UpgradeKeeper.ScheduleUpgrade(s.ctx, plan)
-				s.Require().NoError(err)
+				s.NoError(err)
 				_, err = s.app.UpgradeKeeper.GetUpgradePlan(s.ctx)
-				s.Require().NoError(err)
+				s.NoError(err)
 
 				s.ctx = s.ctx.WithHeaderInfo(header.Info{Height: DummyUpgradeHeight, Time: s.ctx.BlockTime().Add(time.Second)}).WithBlockHeight(DummyUpgradeHeight)
-				s.Require().NotPanics(func() {
+				s.NotPanics(func() {
 					_, err := s.preModule.PreBlock(s.ctx)
-					s.Require().NoError(err)
+					s.NoError(err)
 				})
 			},
 			func() {
+				// ensure the account is removed
+				allAccounts := s.app.AccountKeeper.GetAllAccounts(s.ctx)
+				newAcctNum := len(allAccounts)
+				s.Equal(newAcctNum, oldAcctNum-1)
 
+				// ensure finality provider is inserted
+				resp, err := s.app.BTCStakingKeeper.FinalityProviders(s.ctx, &bstypes.QueryFinalityProvidersRequest{})
+				s.NoError(err)
+				s.Len(resp.FinalityProviders, 1)
 			},
 			true,
 		},
