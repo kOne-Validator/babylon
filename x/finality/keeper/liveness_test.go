@@ -56,20 +56,34 @@ func FuzzHandleLiveness(f *testing.F) {
 		require.Equal(t, int64(0), signingInfo.MissedBlocksCounter)
 
 		minSignedPerWindow := params.MinSignedPerWindowInt()
-		// for blocks up to the jailing boundary, mark the finality provider as having not signed
-		missingCount := 0
-		targetHeight := activatedHeight + ((params.SignedBlocksWindow * 2) - minSignedPerWindow)
-		for ; height < activatedHeight+((params.SignedBlocksWindow*2)-minSignedPerWindow+1); height++ {
+		maxMissed := params.SignedBlocksWindow - minSignedPerWindow
+		// for blocks up to the inactivity boundary, mark the finality provider as having not signed
+		inactiveDetectedHeight := height + maxMissed + 1
+		for ; height < inactiveDetectedHeight; height++ {
 			err := fKeeper.HandleFinalityProviderLiveness(ctx, fpPk, true, height)
 			require.NoError(t, err)
-			missingCount++
 			signingInfo, err = fKeeper.FinalityProviderSigningTracker.Get(ctx, fpPk.MustMarshal())
 			require.NoError(t, err)
-			if height < targetHeight {
-				require.Equal(t, int64(missingCount), signingInfo.MissedBlocksCounter)
+			if height < inactiveDetectedHeight-1 {
+				require.GreaterOrEqual(t, maxMissed, signingInfo.MissedBlocksCounter)
 			} else {
-				// the fp is jailed, so the signingInfo is reset
-				require.Equal(t, int64(0), signingInfo.MissedBlocksCounter)
+				require.Less(t, maxMissed, signingInfo.MissedBlocksCounter)
+			}
+		}
+
+		// perform heights that not missed, expect the inactive is reverted
+		bsKeeper.EXPECT().RevertInactiveFinalityProvider(gomock.Any(), fpPk.MustMarshal()).Return(nil).AnyTimes()
+		inactiveRevertedHeight := height + maxMissed
+		for ; height < inactiveRevertedHeight; height++ {
+			err := fKeeper.HandleFinalityProviderLiveness(ctx, fpPk, false, height)
+			require.NoError(t, err)
+			signingInfo, err = fKeeper.FinalityProviderSigningTracker.Get(ctx, fpPk.MustMarshal())
+			require.NoError(t, err)
+			if height < inactiveRevertedHeight-1 {
+				require.Less(t, maxMissed, signingInfo.MissedBlocksCounter)
+			} else {
+				// the inactive fp is reverted
+				require.Equal(t, maxMissed, signingInfo.MissedBlocksCounter)
 			}
 		}
 	})

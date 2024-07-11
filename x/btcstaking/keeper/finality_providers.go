@@ -67,6 +67,27 @@ func (k Keeper) SlashFinalityProvider(ctx context.Context, fpBTCPK []byte) error
 	return nil
 }
 
+// RevertInactiveFinalityProvider sets the Inactive flag of the given finality provider
+// to false
+func (k Keeper) RevertInactiveFinalityProvider(ctx context.Context, fpBTCPK []byte) error {
+	// ensure finality provider exists
+	fp, err := k.GetFinalityProvider(ctx, fpBTCPK)
+	if err != nil {
+		return err
+	}
+
+	// ignore the finality provider is already slashed
+	// or detected as inactive
+	if fp.IsSlashed() || fp.IsInactive() {
+		return nil
+	}
+
+	fp.Inactive = false
+	k.SetFinalityProvider(ctx, fp)
+
+	return nil
+}
+
 // finalityProviderStore returns the KVStore of the finality provider set
 // prefix: FinalityProviderKey
 // key: Bitcoin secp256k1 PK

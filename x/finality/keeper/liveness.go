@@ -47,8 +47,8 @@ func (k Keeper) HandleFinalityProviderLiveness(ctx context.Context, fpPk *types.
 		return err
 	}
 
-	// don't update missed blocks when finality provider is already detected as inactive or slashed
-	if fp.IsInactive() || fp.IsSlashed() {
+	// don't update missed blocks when finality provider is already detected slashed
+	if fp.IsSlashed() {
 		return nil
 	}
 
@@ -87,22 +87,25 @@ func (k Keeper) HandleFinalityProviderLiveness(ctx context.Context, fpPk *types.
 			return err
 		}
 
-		// We need to reset the counter & bitmap so that the finality provider won't be
-		// immediately detected as inactive upon re-bonding.
-		// We don't set the start height as this will get correctly set
-		// once they bond again in the AfterFinalityProviderActivated hook
-		signInfo.ResetMissedBlocksCounter()
-		err = k.DeleteMissedBlockBitmap(ctx, fpPk)
+		k.Logger(sdkCtx).Info(
+			"detected inactive finality provider",
+			"height", height,
+			"public_key", fpPk.MarshalHex(),
+		)
+	} else if fp.IsInactive() {
+		updated = true
+		// TODO emit event
+
+		// change the Inactive flag of the finality provider to false
+		err = k.BTCStakingKeeper.RevertInactiveFinalityProvider(ctx, fpPk.MustMarshal())
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to revert inactive finality provider %s: %w", fpPk.MarshalHex(), err)
 		}
 
 		k.Logger(sdkCtx).Info(
-			"jailing validator due to liveness fault",
+			"reverted inactive finality provider",
 			"height", height,
 			"public_key", fpPk.MarshalHex(),
-			"min_height", minHeight,
-			"threshold", minSignedPerWindow,
 		)
 	}
 

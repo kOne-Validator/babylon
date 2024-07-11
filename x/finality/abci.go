@@ -27,10 +27,17 @@ func EndBlocker(ctx context.Context, k keeper.Keeper) ([]abci.ValidatorUpdate, e
 		k.IndexBlock(ctx)
 		// tally all non-finalised blocks
 		k.TallyBlocks(ctx)
-		// jail inactive finality providers if there are any
-		// TODO: decide which height to use the handle liveness
-		height := sdk.UnwrapSDKContext(ctx).HeaderInfo().Height
-		k.HandleLiveness(ctx, height)
+
+		// detect inactive finality providers if there are any
+		// heightToExamine is determined by the current height - params.FinalityVoteDelay
+		// which indicates that finality providers have up to `params.FinalityVoteDelay` blocks
+		// to send votes on the height to be examined as whether `missed` or not (1 or 0 of a
+		// bit in a bit array of size params.SignedBlocksWindow)
+		// once this height is judged as `missed`, the judgement is irreversible
+		heightToExamine := sdk.UnwrapSDKContext(ctx).HeaderInfo().Height - k.GetParams(ctx).FinalityVoteDelay
+		if heightToExamine >= 1 {
+			k.HandleLiveness(ctx, heightToExamine)
+		}
 	}
 
 	return []abci.ValidatorUpdate{}, nil
