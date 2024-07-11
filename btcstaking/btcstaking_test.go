@@ -86,6 +86,19 @@ func (t *TestScenario) FinalityProviderPublicKeys() []*btcec.PublicKey {
 	return finalityProviderPubKeys
 }
 
+func createSpendStakeTx(t *testing.T, stakingAmount btcutil.Amount, stakingTime uint16) *wire.MsgTx {
+	spendStakeTx := wire.NewMsgTx(2)
+	spendStakeTx.AddTxIn(wire.NewTxIn(&wire.OutPoint{}, nil, nil))
+	spendStakeTx.AddTxOut(
+		&wire.TxOut{
+			PkScript: []byte("doesn't matter"),
+			Value:    int64(stakingAmount.MulF64(0.5)),
+		},
+	)
+	spendStakeTx.TxIn[0].Sequence = uint32(stakingTime)
+	return spendStakeTx
+}
+
 func TestSpendingTimeLockPath(t *testing.T) {
 	r := rand.New(rand.NewSource(time.Now().Unix()))
 	scenario := GenerateTestScenario(
@@ -110,18 +123,7 @@ func TestSpendingTimeLockPath(t *testing.T) {
 
 	require.NoError(t, err)
 
-	spendStakeTx := wire.NewMsgTx(2)
-	spendStakeTx.AddTxIn(wire.NewTxIn(&wire.OutPoint{}, nil, nil))
-	spendStakeTx.AddTxOut(
-		&wire.TxOut{
-			PkScript: []byte("doesn't matter"),
-			// spend half of the staking amount
-			Value: int64(scenario.StakingAmount.MulF64(0.5)),
-		},
-	)
-
-	// to spend tx as staker, we need to set the sequence number to be >= stakingTimeBlocks
-	spendStakeTx.TxIn[0].Sequence = uint32(scenario.StakingTime)
+	spendStakeTx := createSpendStakeTx(t, scenario.StakingAmount, scenario.StakingTime)
 
 	si, err := stakingInfo.TimeLockPathSpendInfo()
 	require.NoError(t, err)
@@ -248,15 +250,7 @@ func TestSpendingUnbondingPathCovenant35MultiSig(t *testing.T) {
 
 	require.NoError(t, err)
 
-	spendStakeTx := wire.NewMsgTx(2)
-	spendStakeTx.AddTxIn(wire.NewTxIn(&wire.OutPoint{}, nil, nil))
-	spendStakeTx.AddTxOut(
-		&wire.TxOut{
-			PkScript: []byte("doesn't matter"),
-			// spend half of the staking amount
-			Value: int64(scenario.StakingAmount.MulF64(0.5)),
-		},
-	)
+	spendStakeTx := createSpendStakeTx(t, scenario.StakingAmount, scenario.StakingTime)
 
 	si, err := stakingInfo.UnbondingPathSpendInfo()
 	require.NoError(t, err)
@@ -326,15 +320,7 @@ func TestSpendingUnbondingPathSingleKeyCovenant(t *testing.T) {
 
 	require.NoError(t, err)
 
-	spendStakeTx := wire.NewMsgTx(2)
-	spendStakeTx.AddTxIn(wire.NewTxIn(&wire.OutPoint{}, nil, nil))
-	spendStakeTx.AddTxOut(
-		&wire.TxOut{
-			PkScript: []byte("doesn't matter"),
-			// spend half of the staking amount
-			Value: int64(scenario.StakingAmount.MulF64(0.5)),
-		},
-	)
+	spendStakeTx := createSpendStakeTx(t, scenario.StakingAmount, scenario.StakingTime)
 
 	si, err := stakingInfo.UnbondingPathSpendInfo()
 	require.NoError(t, err)
@@ -398,15 +384,7 @@ func TestSpendingSlashingPathCovenant35MultiSig(t *testing.T) {
 
 	require.NoError(t, err)
 
-	spendStakeTx := wire.NewMsgTx(2)
-	spendStakeTx.AddTxIn(wire.NewTxIn(&wire.OutPoint{}, nil, nil))
-	spendStakeTx.AddTxOut(
-		&wire.TxOut{
-			PkScript: []byte("doesn't matter"),
-			// spend half of the staking amount
-			Value: int64(scenario.StakingAmount.MulF64(0.5)),
-		},
-	)
+	spendStakeTx := createSpendStakeTx(t, scenario.StakingAmount, scenario.StakingTime)
 
 	si, err := stakingInfo.SlashingPathSpendInfo()
 	require.NoError(t, err)
@@ -484,15 +462,7 @@ func TestSpendingSlashingPathCovenant35MultiSigFinalityProviderRestaking(t *test
 
 	require.NoError(t, err)
 
-	spendStakeTx := wire.NewMsgTx(2)
-	spendStakeTx.AddTxIn(wire.NewTxIn(&wire.OutPoint{}, nil, nil))
-	spendStakeTx.AddTxOut(
-		&wire.TxOut{
-			PkScript: []byte("doesn't matter"),
-			// spend half of the staking amount
-			Value: int64(scenario.StakingAmount.MulF64(0.5)),
-		},
-	)
+	spendStakeTx := createSpendStakeTx(t, scenario.StakingAmount, scenario.StakingTime)
 
 	si, err := stakingInfo.SlashingPathSpendInfo()
 	require.NoError(t, err)
